@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title id="pageTitle">Factuur</title>
+  <style>
+    :root{ --brand:#0ea5e9; --ink:#0f172a; --muted:#64748b; --line:#e2e8f0; --bg:#f8fafc; --panel:#ffffff; }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial}
+    a{color:inherit}
+
+    .page{max-width:960px;margin:24px auto;padding:24px}
+    .topbar{position:sticky;top:0;z-index:50;backdrop-filter:saturate(180%) blur(6px);background:rgba(248,250,252,.9);border-bottom:1px solid var(--line)}
+    .topbar .inner{max-width:960px;margin:0 auto;padding:10px 16px;display:flex;gap:12px;align-items:center;justify-content:space-between}
+    .brandmark{display:flex;align-items:center;gap:10px}
+    .branddot{width:10px;height:10px;border-radius:50%;background:var(--brand);box-shadow:0 0 0 3px rgba(14,165,233,.15)}
+    .breadcrumbs{color:var(--muted);font-size:12px}
+    .actions{display:flex;gap:8px;flex-wrap:wrap}
+    .btn{border:1px solid var(--line);background:#fff;border-radius:999px;padding:8px 12px;cursor:pointer;display:inline-flex;gap:8px;align-items:center;color:var(--ink)}
+    .btn.primary{background:var(--brand);border-color:var(--brand);color:#fff}
+    .btn.ghost{background:#fff}
+    .btn.icon{padding:8px;border-radius:10px;background:#fff}
+
+    .card{margin-top:16px;background:#fff;border:1px solid var(--line);border-radius:16px;overflow:hidden;box-shadow:0 10px 30px rgba(2,8,23,.08)}
+    .card header{display:flex;justify-content:space-between;gap:16px;padding:24px;border-bottom:3px solid var(--brand)}
+    .brand{display:flex;flex-direction:column;align-items:center;gap:8px}
+    .logo{width:auto;max-height:80px;border-radius:12px;display:block;overflow:hidden;margin:0 auto}
+    .logo img{display:block;max-height:80px;width:auto}
+    .company{display:flex;flex-direction:column;gap:2px;text-align:center}
+    .company #companyName{font-weight:700;font-size:18px;margin-bottom:4px}
+
+    .body{display:grid;gap:16px;padding:24px}
+    .columns{display:grid;grid-template-columns:1fr;gap:16px}
+    .box{border:1px solid var(--line);border-radius:12px;padding:12px;background:#fff}
+    .box h3{margin:0 0 6px 0;font-size:14px;color:var(--brand)}
+    .dim{color:var(--muted)}
+    table{width:100%;border-collapse:collapse}
+    thead th{font-weight:600;text-align:left;font-size:12px;color:var(--muted);border-bottom:2px solid var(--line);padding:10px}
+    tbody td{padding:8px;border-bottom:1px solid var(--line)}
+    .num{text-align:right}
+
+    .totals{display:grid;gap:8px;justify-content:end;background:#f8fafc;border-radius:12px;padding:16px}
+    .totals .row{display:flex;justify-content:space-between}
+    .totals .label{color:var(--muted)}
+    .grand{font-size:18px;font-weight:700;color:var(--brand)}
+    .foot{padding:16px 24px;border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:16px;align-items:center}
+
+    .chips{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
+    .chip{border:1px dashed var(--line);background:#fff;border-radius:999px;padding:6px 10px;font-size:12px;color:var(--muted)}
+
+    /* Drawer */
+    .drawer{position:fixed;top:0;right:-520px;height:100%;width:100%;max-width:520px;background:var(--panel);border-left:1px solid var(--line);box-shadow:-20px 0 50px rgba(2,8,23,.15);transition:transform .25s ease;transform:translateX(0);z-index:41;display:flex;flex-direction:column}
+    .drawer.open{transform:translateX(-520px)}
+    .drawer header{display:flex;align-items:center;gap:8px;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--line)}
+    .panel-scroll{padding:16px;overflow:auto}
+    .section{border:1px solid var(--line);border-radius:12px;margin-bottom:12px}
+    .section summary{list-style:none;cursor:pointer;padding:12px 14px;font-weight:600;color:var(--ink);display:flex;align-items:center;justify-content:space-between}
+    .section summary::-webkit-details-marker{display:none}
+    .section[open] summary{border-bottom:1px solid var(--line);background:#f8fafc}
+    .section .body{padding:12px}
+    .grid{display:grid;gap:10px}
+    .cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}
+    .row{display:flex;gap:8px;align-items:center}
+    label{font-size:12px;color:var(--muted)}
+    input,select,textarea,button{font:inherit}
+    input,select,textarea{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:#fff}
+    input[readonly]{background:#f8fafc;color:#64748b}
+
+    /* Items editor */
+    .items-editor{display:grid;gap:8px}
+    .item-row{display:grid;grid-template-columns:1fr 100px 110px 90px 40px;gap:8px;align-items:end}
+    .item-row .iconbtn{border:1px solid var(--line);background:#fff;border-radius:8px;width:36px;height:36px;cursor:pointer}
+    .editor-actions{display:flex;gap:8px}
+
+    /* Print */
+    @media print{
+      .topbar,.drawer,.chips{display:none !important}
+      .page{margin:0;max-width:none;padding:0}
+      .card{border:none;box-shadow:none;border-radius:0}
+      a[href]::after{content:none !important}
+    }
+
+    .drawer-backdrop{position:fixed;inset:0;background:rgba(2,8,23,.35);opacity:0;pointer-events:none;transition:opacity .2s ease;z-index:40}
+    .drawer.open{transform:translateX(-520px)}
+    .drawer-backdrop.show{opacity:1;pointer-events:auto}
+    
+  
+/* === Topbar navigation redesign (clean, readable, accessible) === */
+.topbar{
+  position: sticky; top: 0; z-index: 50;
+  background: #ffffff; /* solid for contrast */
+  border-bottom: 1px solid var(--line);
+  backdrop-filter: none;
+  box-shadow: 0 2px 8px rgba(2,8,23,.04);
+}
+.topbar .inner{ padding: 10px 16px; }
+.actions{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+.actions .btn{ white-space:nowrap; }
+
+.btn{
+  display:inline-flex; align-items:center; gap:8px;
+  border:1px solid var(--line);
+  background:#ffffff;
+  color:var(--ink);
+  border-radius:999px;
+  padding:8px 12px;
+  min-height:36px;
+  transition: background .15s ease, border-color .15s ease, box-shadow .15s ease, transform .05s ease;
+  font-weight:600;
+}
+.btn:hover{ background:#f8fafc; border-color:#cbd5e1; }
+.btn:active{ transform: translateY(0.5px); }
+.btn:focus-visible{ outline:2px solid transparent; box-shadow:0 0 0 3px rgba(14,165,233,.25); }
+
+.btn.primary{
+  background:var(--brand);
+  border-color:var(--brand);
+  color:#fff;
+}
+.btn.primary:hover{ filter:brightness(0.97); }
+.btn.primary:active{ transform: translateY(0.5px); }
+
+.btn.ghost{ background:#ffffff; }
+.btn.icon{
+  width:36px; height:36px; padding:0;
+  display:inline-flex; align-items:center; justify-content:center;
+  border-radius:10px;
+}
+
+/* Compact on small screens */
+@media (max-width:480px){
+  .btn{ padding:6px 10px; min-height:34px; font-weight:600; }
+  .actions{ gap:6px; }
+}
+
+  
+/* === Cleaner toggles in drawer === */
+.toggles{ grid-column:1/-1; display:flex; gap:12px; flex-wrap:wrap; align-items:center; margin-top:4px; }
+.toggle{ display:inline-flex; align-items:center; gap:8px; padding:6px 10px; border:1px solid var(--line); border-radius:999px; background:#fff; user-select:none; cursor:pointer; }
+.toggle:hover{ background:#f8fafc; }
+.toggle .switch{ position:relative; width:44px; height:24px; display:inline-flex; align-items:center; }
+.toggle .switch input{ appearance:none; -webkit-appearance:none; width:44px; height:24px; border-radius:999px; border:1px solid var(--line); background:#e2e8f0; outline:none; cursor:pointer; transition: background .2s, border-color .2s; }
+.toggle .switch input::after{ content:""; position:absolute; width:18px; height:18px; border-radius:50%; background:#fff; box-shadow:0 1px 2px rgba(0,0,0,.15); left:3px; top:3px; transition: transform .2s; }
+.toggle .switch input:checked{ background:var(--brand); border-color:var(--brand); }
+.toggle .switch input:checked::after{ transform: translateX(20px); }
+
+/* Inputs consistent */
+.section .body input, .section .body select{ height:42px; }
+.section .body label{ font-size:12px; color:var(--muted); }
+
+  </style>
+</head>
+<body>
+  <div class="topbar" role="banner">
+    <div class="inner">
+      <div class="brandmark" aria-label="Factuur">
+        <span class="branddot" aria-hidden="true"></span>
+        <div>
+          <div style="font-weight:700">Factuur</div>
+          <div class="breadcrumbs">Instellingen · Klant · Regels · Stijl</div>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="btn" id="loadBtn">Laden</button>
+        <button class="btn" id="saveBtn">Opslaan</button>
+        <button class="btn ghost" id="resetBtn">Reset</button>
+        <button class="btn primary" id="printBtn">Print / PDF</button>
+        <button class="btn icon" id="openDrawer" aria-haspopup="dialog" aria-controls="settingsDrawer" title="Instellingen">⚙️</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="page">
+    <div class="chips" aria-hidden="true">
+      <span class="chip">Factuur: <strong id="chipInvNo">—</strong></span>
+      <span class="chip">Datum: <strong id="chipInvDate">—</strong></span>
+      <span class="chip">Vervalt: <strong id="chipDueDate">—</strong></span>
+      <span class="chip">Totaal: <strong id="chipGrand">€ 0,00</strong></span>
+    </div>
+
+    <article class="card" id="invoice">
+      <header>
+        <!-- LINKS: factuurmeta -->
+        <div class="panel">
+          <div>
+            <small>Factuurnummer</small>
+            <div style="font-size:22px;font-weight:800" id="displayInvNo">—</div>
+          </div>
+          <div class="grid">
+            <div><small>Factuurdatum</small><div id="displayInvDate">—</div></div>
+            <div id="displaySupplyDateRow"><small>Leveringsdatum</small><div id="displaySupplyDate">—</div></div>
+            <div><small>Vervaldatum</small><div id="displayDueDate">—</div></div>
+          </div>
+        </div>
+
+        <!-- RECHTS: logo + bedrijf -->
+        <div class="brand">
+          <div class="logo" id="logo"><img src="logo.png" alt="Logo"></div>
+          <div class="company">
+            <div id="companyName">HRNWG Holding B.V.</div>
+            <div id="companyStreet">Marcus Buschstraat 67</div>
+            <div id="companyZip">9934 GG Delfzijl</div>
+            <div id="companyKVK">KVK 88801187</div>
+            <div id="companyBTW">BTW NL864783619B01</div>
+            <div id="companyVATNote" class="dim"></div>
+            <div><a id="companyEmail" href="mailto:info@hrnwg.nl">info@hrnwg.nl</a></div>
+            <div id="companyPhone">+31 6 11 46 62 91</div>
+          </div>
+        </div>
+      </header>
+
+      <div class="body">
+        <div class="columns">
+          <div class="box">
+            <h3>Verzonden aan</h3>
+            <div id="clientName" style="font-weight:600">Sereres Consultancy B.V.</div>
+            <div class="dim">t.a.v. <span id="clientContact">Julien Hoornweg</span></div>
+            <div id="clientStreet" class="dim">Marcus Buschstraat 67</div>
+            <div id="clientZip" class="dim">9934 GG Delfzijl</div>
+            <div class="dim" id="clientVATRow" style="display:none">Klant BTW-id: <span id="clientVAT"></span></div>
+          </div>
+        </div>
+
+        <div class="box">
+          <h3>Posten</h3>
+          <table>
+            <thead>
+              <tr>
+                <th style="width:44%">Omschrijving</th>
+                <th class="num" style="width:12%">Aantal</th>
+                <th class="num" style="width:16%">Prijs/st. (excl.)</th>
+                <th class="num" style="width:10%">BTW %</th>
+                <th class="num" style="width:10%">BTW €</th>
+                <th class="num" style="width:16%">Totaal (incl.)</th>
+              </tr>
+            </thead>
+            <tbody id="invoiceBody"></tbody>
+          </table>
+        </div>
+
+        <div class="box" style="display:grid;gap:12px">
+          <h3>Samenvatting</h3>
+          <div id="vatBreakdown" class="dim"></div>
+          <div class="totals">
+            <div class="row"><span class="label">Subtotaal (excl. btw)</span><strong id="subtotal">€ 0,00</strong></div>
+            <div class="row"><span class="label">BTW totaal</span><strong id="vatTotal">€ 0,00</strong></div>
+            <div class="row grand"><span>Totaal te betalen</span><span id="grandTotal">€ 0,00</span></div>
+          </div>
+          <div style="border-top:1px solid var(--line);padding-top:8px">
+            <h3>Betaalinstructie</h3>
+            <div id="paymentInstruction" class="dim"></div>
+          </div>
+          <div id="legalNotes" class="dim"></div>
+        </div>
+      </div>
+      <div class="foot"><div></div></div>
+    </article>
+  </div>
+
+  <!-- Instellingen -->
+  <div class="drawer" id="settingsDrawer" role="dialog" aria-modal="true" aria-label="Instellingen & snelle acties">
+    <header>
+      <h2>Instellingen</h2>
+      <div class="row">
+        <button class="btn" id="closeDrawer">Sluiten</button>
+      </div>
+    </header>
+    <div class="panel-scroll">
+      <details class="section" open>
+        <summary>Bedrijf</summary>
+        <div class="body grid cols-2">
+          <div><label for="companyNameInput">Bedrijfsnaam</label><input id="companyNameInput" type="text" value="HRNWG Holding B.V."></div>
+          <div><label for="companyEmailInput">E-mail</label><input id="companyEmailInput" type="email" value="info@hrnwg.nl"></div>
+          <div><label for="companyStreetInput">Straat</label><input id="companyStreetInput" type="text" value="Marcus Buschstraat 67"></div>
+          <div class="row" style="gap:10px">
+            <div style="flex:1"><label for="companyPhoneInput">Telefoon</label><input id="companyPhoneInput" type="text" value="+31 6 11 46 62 91"></div>
+            <div style="flex:1"><label for="companyZipInput">Postcode + Plaats</label><input id="companyZipInput" type="text" value="9934 GG Delfzijl"></div>
+          </div>
+          <div><label for="companyKVKInput">KVK</label><input id="companyKVKInput" type="text" value="KVK 88801187"></div>
+          <div><label for="companyBTWInput">BTW-nummer</label><input id="companyBTWInput" type="text" value="NL864783619B01"></div>
+          <div><label for="logoFile">Logo uploaden</label><input id="logoFile" type="file" accept="image/*"></div>
+          <div><label for="brandColor">Merk-kleur</label><input id="brandColor" type="color" value="#0ea5e9"></div>
+        </div>
+      </details>
+
+      <details class="section" open>
+        <summary>Klant</summary>
+        <div class="body grid cols-2">
+          <div><label for="clientNameInput">Klantnaam</label><input id="clientNameInput" type="text" value="Sereres Consultancy B.V."></div>
+          <div><label for="clientContactInput">Contactpersoon</label><input id="clientContactInput" type="text" value="Julien Hoornweg"></div>
+          <div><label for="clientStreetInput">Straat</label><input id="clientStreetInput" type="text" value="Marcus Buschstraat 67"></div>
+          <div><label for="clientZipInput">Postcode + Plaats</label><input id="clientZipInput" type="text" value="9934 GG Delfzijl"></div>
+          <div><label for="clientVATInput">Klant BTW-id (optioneel)</label><input id="clientVATInput" type="text" placeholder="bv. NL123456789B01"></div>
+          <div><label for="clientEmailInput">Klant e-mail</label><input id="clientEmailInput" type="email" value="info@sereres.nl"></div>
+        </div>
+      </details>
+
+      <details class="section" open>
+        <summary>Factuur</summary>
+        <div class="body grid cols-3">
+          <div><label for="currency">Valuta</label>
+            <select id="currency">
+              <option value="EUR" selected>EUR (€)</option>
+              <option value="USD">USD ($)</option>
+              <option value="GBP">GBP (£)</option>
+              <option value="CHF">CHF (Fr.)</option>
+            </select>
+          </div>
+          <div><label for="invNo">Factuurnummer</label><input id="invNo" type="text" value="2025-001"></div>
+          <div><label for="invDate">Factuurdatum</label><input id="invDate" type="date"></div>
+          <div><label for="supplyDate">Leveringsdatum</label><input id="supplyDate" type="date"></div>
+          <div><label for="payTermInput">Betaaltermijn (dagen)</label><input id="payTermInput" type="number" step="1" min="0" value="30"></div>
+          <div><label for="dueDate">Vervaldatum (berekend)</label><input id="dueDate" type="date" readonly></div>
+          <div class="toggles" role="group" aria-label="Opties">
+            <label class="toggle" for="showSupplyToggle">
+              <span class="switch"><input id="showSupplyToggle" type="checkbox" checked aria-label="Leveringsdatum tonen"></span>
+              <span>Leveringsdatum tonen</span>
+            </label>
+            <label class="toggle" for="korToggle">
+              <span class="switch"><input id="korToggle" type="checkbox" aria-label="KOR: btw vrijgesteld"></span>
+              <span>KOR: btw vrijgesteld</span>
+            </label>
+            <label class="toggle" for="verlegdToggle">
+              <span class="switch"><input id="verlegdToggle" type="checkbox" aria-label="BTW verlegd"></span>
+              <span>BTW verlegd (intracommunautair / onderaanneming)</span>
+            </label>
+          </div>
+          
+          
+          
+        </div>
+      </details>
+
+      <details class="section" open>
+        <summary>Factuurregels</summary>
+        <div class="body">
+          <div id="itemsEditor" class="items-editor"></div>
+          <div class="editor-actions">
+            <button class="btn" id="addItem">+ Regel toevoegen</button>
+            <button class="btn ghost" id="clearItems">Alles verwijderen</button>
+          </div>
+        </div>
+      </details>
+
+      <details class="section">
+        <summary>Bank</summary>
+        <div class="body grid cols-2">
+          <div><label for="ibanInput">IBAN</label><input id="ibanInput" type="text" value="NL30 BUNQ 2083 6134 57"></div>
+          <div><label for="bicInput">BIC</label><input id="bicInput" type="text" value="BUNQNL2AXXX"></div>
+        </div>
+      </details>
+    </div>
+  </div>
+  <div class="drawer-backdrop" id="backdrop"></div>
+
+  <script>
+  (function(){
+    // Drawer controls
+    const openBtn = document.getElementById('openDrawer');
+    const drawer = document.getElementById('settingsDrawer');
+    const closeBtn = document.getElementById('closeDrawer');
+    const backdrop = document.getElementById('backdrop');
+    function open(){ drawer.classList.add('open'); backdrop.classList.add('show'); openBtn.setAttribute('aria-expanded','true'); }
+    function close(){ drawer.classList.remove('open'); backdrop.classList.remove('show'); openBtn.setAttribute('aria-expanded','false'); }
+    openBtn.addEventListener('click', open);
+    closeBtn.addEventListener('click', close);
+    backdrop.addEventListener('click', close);
+    document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') close(); });
+
+    const els = {
+      // inputs
+      companyNameInput: document.getElementById('companyNameInput'),
+      companyStreetInput: document.getElementById('companyStreetInput'),
+      companyZipInput: document.getElementById('companyZipInput'),
+      companyKVKInput: document.getElementById('companyKVKInput'),
+      companyBTWInput: document.getElementById('companyBTWInput'),
+      companyEmailInput: document.getElementById('companyEmailInput'),
+      companyPhoneInput: document.getElementById('companyPhoneInput'),
+      clientNameInput: document.getElementById('clientNameInput'),
+      clientContactInput: document.getElementById('clientContactInput'),
+      clientStreetInput: document.getElementById('clientStreetInput'),
+      clientZipInput: document.getElementById('clientZipInput'),
+      clientVATInput: document.getElementById('clientVATInput'),
+      clientEmailInput: document.getElementById('clientEmailInput'),
+      ibanInput: document.getElementById('ibanInput'),
+      bicInput: document.getElementById('bicInput'),
+      currency: document.getElementById('currency'),
+      invNo: document.getElementById('invNo'),
+      invDate: document.getElementById('invDate'),
+      supplyDate: document.getElementById('supplyDate'),
+      payTermInput: document.getElementById('payTermInput'),
+      dueDate: document.getElementById('dueDate'),
+      korToggle: document.getElementById('korToggle'),
+      verlegdToggle: document.getElementById('verlegdToggle'),
+      showSupplyToggle: document.getElementById('showSupplyToggle'),
+      brandColor: document.getElementById('brandColor'),
+      logoFile: document.getElementById('logoFile'),
+      printBtn: document.getElementById('printBtn'),
+      saveBtn: document.getElementById('saveBtn'),
+      loadBtn: document.getElementById('loadBtn'),
+      resetBtn: document.getElementById('resetBtn'),
+      addItem: document.getElementById('addItem'),
+      clearItems: document.getElementById('clearItems'),
+      itemsEditor: document.getElementById('itemsEditor'),
+      // mirrors
+      displayInvNo: document.getElementById('displayInvNo'),
+      displayInvDate: document.getElementById('displayInvDate'),
+      displaySupplyDate: document.getElementById('displaySupplyDate'),
+      displaySupplyDateRow: document.getElementById('displaySupplyDateRow'),
+      displayDueDate: document.getElementById('displayDueDate'),
+      companyName: document.getElementById('companyName'),
+      companyStreet: document.getElementById('companyStreet'),
+      companyZip: document.getElementById('companyZip'),
+      companyKVK: document.getElementById('companyKVK'),
+      companyBTW: document.getElementById('companyBTW'),
+      companyVATNote: document.getElementById('companyVATNote'),
+      companyEmail: document.getElementById('companyEmail'),
+      companyPhone: document.getElementById('companyPhone'),
+      clientName: document.getElementById('clientName'),
+      clientContact: document.getElementById('clientContact'),
+      clientStreet: document.getElementById('clientStreet'),
+      clientZip: document.getElementById('clientZip'),
+      clientVAT: document.getElementById('clientVAT'),
+      clientVATRow: document.getElementById('clientVATRow'),
+      vatBreakdown: document.getElementById('vatBreakdown'),
+      subtotal: document.getElementById('subtotal'),
+      vatTotal: document.getElementById('vatTotal'),
+      grandTotal: document.getElementById('grandTotal'),
+      paymentInstruction: document.getElementById('paymentInstruction'),
+      legalNotes: document.getElementById('legalNotes'),
+      logo: document.getElementById('logo'),
+      chipInvNo: document.getElementById('chipInvNo'),
+      chipInvDate: document.getElementById('chipInvDate'),
+      chipDueDate: document.getElementById('chipDueDate'),
+      chipGrand: document.getElementById('chipGrand'),
+      invoiceBody: document.getElementById('invoiceBody'),
+      pageTitle: document.getElementById('pageTitle'),
+    };
+
+    const money = (val) => {
+      const cur = els.currency.value || 'EUR';
+      try{ return new Intl.NumberFormat('nl-NL',{style:'currency',currency:cur}).format(Number(val)||0); }
+      catch(e){ return new Intl.NumberFormat('nl-NL').format(Number(val)||0); }
+    }
+    const num = (v) => { if (typeof v === 'number') return v; if (!v && v!==0) return 0; return parseFloat(String(v).replace(',','.')) || 0; }
+    const dateFmt = (iso) => { if(!iso) return '—'; const d = new Date(iso + 'T00:00:00'); return d.toLocaleDateString('nl-NL',{year:'numeric',month:'long',day:'numeric'}); }
+    const addDays = (iso, days) => { if(!iso) return ''; const d = new Date(iso + 'T00:00:00'); d.setDate(d.getDate() + (Number(days)||0)); return d.toISOString().slice(0,10); }
+
+    function buildPaymentInstruction(){
+      const bedrag = els.grandTotal.textContent.trim();
+      const due = dateFmt(els.dueDate.value);
+      const rekening = (els.ibanInput?.value || '').trim() || '—';
+      const bedrijf = (els.companyName?.textContent || '').trim() || '—';
+      const factuurnr = (els.invNo?.value || '').trim() || '—';
+      els.paymentInstruction.innerHTML =
+        `Gelieve dit bedrag van <strong>${bedrag}</strong> over te maken vóór: <strong>${due}</strong> op rekeningnummer: <strong>${rekening}</strong> t.n.v. <strong>${bedrijf}</strong> o.v.v. <strong>${factuurnr}</strong>.`;
+    }
+
+    function legalComplianceNotes(totalVat){
+      const notes = [];
+      if(els.korToggle.checked){
+        notes.push('Vrijgesteld van btw op grond van de Kleineondernemersregeling (KOR).');
+      }
+      if(els.verlegdToggle.checked){
+        notes.push('BTW verlegd. Vermeld het btw-nummer van de afnemer en “btw verlegd” op de factuur.');
+      }
+      els.legalNotes.textContent = notes.join(' ');
+      els.companyVATNote.textContent = els.korToggle.checked ? 'KOR van toepassing' : '';
+    }
+
+    function itemRowTemplate(it, idx){
+      const row = document.createElement('div');
+      row.className = 'item-row';
+      row.dataset.index = idx;
+      row.innerHTML = `
+        <div><label>Omschrijving</label><input type="text" class="desc" value="${(it.desc||'').replace(/"/g,'&quot;')}"></div>
+        <div><label>Aantal</label><input type="number" class="qty" step="0.01" value="${it.qty ?? 1}"></div>
+        <div><label>Prijs/st. (excl.)</label><input type="number" class="price" step="0.01" value="${it.price ?? 0}"></div>
+        <div><label>BTW %</label><input type="number" class="vat" step="0.1" value="${it.vat ?? 21}"></div>
+        <div><button class="iconbtn remove" title="Regel verwijderen" aria-label="Regel verwijderen">–</button></div>`;
+      return row;
+    }
+
+    function readItemsFromEditor(){
+      return Array.from(els.itemsEditor.querySelectorAll('.item-row')).map(r=>({
+        desc: r.querySelector('.desc').value.trim(),
+        qty: num(r.querySelector('.qty').value),
+        price: num(r.querySelector('.price').value),
+        vat: num(r.querySelector('.vat').value),
+      }));
+    }
+
+    function renderItemsEditor(items){
+      els.itemsEditor.innerHTML='';
+      items.forEach((it,idx)=> els.itemsEditor.appendChild(itemRowTemplate(it, idx)) );
+    }
+
+    function renderInvoiceTable(items){
+      els.invoiceBody.innerHTML='';
+      items.forEach(it=>{
+        const base = num(it.qty)*num(it.price);
+        const vatAmt = els.korToggle.checked || els.verlegdToggle.checked ? 0 : base * num(it.vat)/100;
+        const total = base + vatAmt;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${(it.desc||'').replace(/</g,'&lt;')}</td>
+          <td class="num">${new Intl.NumberFormat('nl-NL',{maximumFractionDigits:2}).format(num(it.qty))}</td>
+          <td class="num">${money(num(it.price))}</td>
+          <td class="num">${new Intl.NumberFormat('nl-NL',{maximumFractionDigits:1}).format(num(it.vat))}</td>
+          <td class="num">${money(vatAmt)}</td>
+          <td class="num">${money(total)}</td>`;
+        els.invoiceBody.appendChild(tr);
+      });
+    }
+
+    function calc(){
+      // dates
+      const invISO = els.invDate.value;
+      const supplyISO = els.supplyDate.value || invISO;
+      const termDays = Number(els.payTermInput.value || 0);
+      const dueISO = addDays(invISO, termDays);
+      els.dueDate.value = dueISO;
+
+      // header mirrors
+      els.displayInvNo.textContent = els.invNo.value || '—';
+      els.displayInvDate.textContent = dateFmt(invISO);
+      els.displaySupplyDate.textContent = dateFmt(supplyISO);
+
+      // toggle leveringsdatum zichtbaar/verborgen
+      if (els.displaySupplyDateRow) {
+        els.displaySupplyDateRow.style.display = (els.showSupplyToggle && els.showSupplyToggle.checked) ? '' : 'none';
+      }
+      els.displayDueDate.textContent = dateFmt(dueISO);
+      els.pageTitle.textContent = els.displayInvNo.textContent && els.displayInvNo.textContent !== '—' ? `Factuur ${els.displayInvNo.textContent}` : 'Factuur';
+
+      // chips mirrors
+      els.chipInvNo.textContent = els.displayInvNo.textContent;
+      els.chipInvDate.textContent = els.displayInvDate.textContent;
+      els.chipDueDate.textContent = els.displayDueDate.textContent;
+
+      // company mirrors
+      els.companyName.textContent = els.companyNameInput.value;
+      els.companyStreet.textContent = els.companyStreetInput.value;
+      els.companyZip.textContent = els.companyZipInput.value;
+      els.companyKVK.textContent = els.companyKVKInput.value ? `KVK ${els.companyKVKInput.value}` : '';
+      els.companyBTW.textContent = els.companyBTWInput.value ? `BTW ${els.companyBTWInput.value}` : '';
+      els.companyEmail.textContent = els.companyEmailInput.value;
+      els.companyEmail.href = 'mailto:' + (els.companyEmailInput.value || '');
+      els.companyPhone.textContent = els.companyPhoneInput.value;
+
+      // client mirrors
+      els.clientName.textContent = els.clientNameInput.value;
+      els.clientContact.textContent = els.clientContactInput.value;
+      els.clientStreet.textContent = els.clientStreetInput.value;
+      els.clientZip.textContent = els.clientZipInput.value;
+      els.clientVAT.textContent = els.clientVATInput.value || '';
+      els.clientVATRow.style.display = els.clientVATInput.value ? '' : 'none';
+
+      // compute totals
+      const items = readItemsFromEditor();
+      renderItemsEditor(items); // keep editor responsive
+      renderInvoiceTable(items);
+
+      // calc totals + VAT breakdown
+      let subtotalBase = 0, totalVat = 0;
+      const vatMap = new Map();
+      items.forEach(it=>{
+        const base = num(it.qty)*num(it.price);
+        subtotalBase += base;
+        const rate = num(it.vat);
+        const vatAmt = (els.korToggle.checked || els.verlegdToggle.checked) ? 0 : base * rate/100;
+        totalVat += vatAmt;
+        vatMap.set(rate, (vatMap.get(rate)||0) + vatAmt);
+      });
+
+      els.subtotal.textContent = money(subtotalBase);
+      els.vatTotal.textContent = money(totalVat);
+      els.grandTotal.textContent = money(subtotalBase + totalVat);
+      els.chipGrand.textContent = els.grandTotal.textContent;
+
+      // VAT breakdown text
+      if(vatMap.size>0){
+        els.vatBreakdown.innerHTML = Array.from(vatMap.entries()).sort((a,b)=>a[0]-b[0]).map(([rate,amt])=> `BTW ${rate}%: <strong>${money(amt)}</strong>`).join(' · ');
+      }else{
+        els.vatBreakdown.textContent = '';
+      }
+
+      // legal notes
+      legalComplianceNotes(totalVat);
+
+      // payment instruction
+      buildPaymentInstruction();
+    }
+
+    function save(){
+      const state = {
+        settings: {
+          currency: els.currency.value,
+          invNo: els.invNo.value,
+          invDate: els.invDate.value,
+          supplyDate: els.supplyDate.value,
+          payTermDays: els.payTermInput.value,
+          brand: getComputedStyle(document.documentElement).getPropertyValue('--brand').trim(),
+          logo: els.logo.querySelector('img')?.src || null,
+          kor: els.korToggle.checked,
+          verlegd: els.verlegdToggle.checked,
+          showSupply: (els.showSupplyToggle ? els.showSupplyToggle.checked : true)
+        },
+        company:{
+          name: els.companyNameInput.value, street: els.companyStreetInput.value, zip: els.companyZipInput.value,
+          kvk: els.companyKVKInput.value, btw: els.companyBTWInput.value, email: els.companyEmailInput.value, phone: els.companyPhoneInput.value
+        },
+        client:{ name: els.clientNameInput.value, contact: els.clientContactInput.value, street: els.clientStreetInput.value, zip: els.clientZipInput.value, vat: els.clientVATInput.value, email: els.clientEmailInput.value },
+        bank:{ iban: els.ibanInput.value, bic: els.bicInput.value },
+        items: readItemsFromEditor()
+      };
+      localStorage.setItem('invoiceState_belastingdienst_v1', JSON.stringify(state));
+      alert('Opgeslagen in deze browser.');
+    }
+
+    function load(){
+      const raw = localStorage.getItem('invoiceState_belastingdienst_v1');
+      if(!raw){ alert('Geen opgeslagen versie gevonden.'); return; }
+      const s = JSON.parse(raw);
+      els.currency.value = s.settings?.currency || 'EUR';
+      els.invNo.value = s.settings?.invNo || '';
+      els.invDate.value = s.settings?.invDate || '';
+      els.supplyDate.value = s.settings?.supplyDate || '';
+      els.payTermInput.value = s.settings?.payTermDays || 30;
+      els.korToggle.checked = !!s.settings?.kor;
+      els.verlegdToggle.checked = !!s.settings?.verlegd;
+      if (els.showSupplyToggle) els.showSupplyToggle.checked = (s.settings?.showSupply !== undefined ? !!s.settings.showSupply : true);
+      if(s.settings?.brand){ document.documentElement.style.setProperty('--brand', s.settings.brand); }
+      if(s.settings?.logo){ const img = els.logo.querySelector('img'); if(img) img.src = s.settings.logo; }
+      // company
+      els.companyNameInput.value = s.company?.name || els.companyNameInput.value;
+      els.companyStreetInput.value = s.company?.street || els.companyStreetInput.value;
+      els.companyZipInput.value = s.company?.zip || els.companyZipInput.value;
+      els.companyKVKInput.value = s.company?.kvk || els.companyKVKInput.value;
+      els.companyBTWInput.value = s.company?.btw || els.companyBTWInput.value;
+      els.companyEmailInput.value = s.company?.email || els.companyEmailInput.value;
+      els.companyPhoneInput.value = s.company?.phone || els.companyPhoneInput.value;
+      // client
+      els.clientNameInput.value = s.client?.name || els.clientNameInput.value;
+      els.clientContactInput.value = s.client?.contact || els.clientContactInput.value;
+      els.clientStreetInput.value = s.client?.street || els.clientStreetInput.value;
+      els.clientZipInput.value = s.client?.zip || els.clientZipInput.value;
+      els.clientVATInput.value = s.client?.vat || els.clientVATInput.value;
+      els.clientEmailInput.value = s.client?.email || els.clientEmailInput.value;
+      // bank
+      els.ibanInput.value = s.bank?.iban || els.ibanInput.value;
+      els.bicInput.value = s.bank?.bic || els.bicInput.value;
+      // items
+      const items = Array.isArray(s.items) && s.items.length ? s.items : [{desc:'Dienst of product', qty:1, price:0, vat:21}];
+      renderItemsEditor(items);
+      calc();
+    }
+
+    function reset(){ localStorage.removeItem('invoiceState_belastingdienst_v1'); alert('Opgeslagen versie gewist.'); }
+
+    function addItemRow(initial){
+      const items = readItemsFromEditor();
+      items.push(initial || {desc:'Dienst of product', qty:1, price:0, vat:21});
+      renderItemsEditor(items);
+      calc();
+    }
+
+    function bindEditorEvents(){
+      els.itemsEditor.addEventListener('input', (e)=>{ if(e.target.closest('.item-row')) calc(); });
+      els.itemsEditor.addEventListener('click', (e)=>{
+        if(e.target.classList.contains('remove')){
+          const row = e.target.closest('.item-row');
+          row.remove();
+          if(els.itemsEditor.querySelectorAll('.item-row').length===0){ addItemRow({desc:'Dienst of product', qty:1, price:0, vat:21}); return; }
+          calc();
+        }
+      });
+      els.addItem.addEventListener('click', ()=> addItemRow());
+      els.clearItems.addEventListener('click', ()=>{ els.itemsEditor.innerHTML=''; addItemRow(); });
+    }
+
+    ['change','input'].forEach(ev=>{
+      [
+        'companyNameInput','companyStreetInput','companyZipInput','companyKVKInput','companyBTWInput','companyEmailInput','companyPhoneInput',
+        'clientNameInput','clientContactInput','clientStreetInput','clientZipInput','clientVATInput','clientEmailInput',
+        'currency','invNo','invDate','supplyDate','payTermInput',
+        'korToggle','verlegdToggle','showSupplyToggle'
+      ].forEach(id=> document.getElementById(id).addEventListener(ev, calc));
+    });
+
+    document.getElementById('brandColor')?.addEventListener('input', (e)=>{ document.documentElement.style.setProperty('--brand', e.target.value); calc(); });
+    document.getElementById('logoFile')?.addEventListener('change', (e)=>{ const f = e.target.files?.[0]; if(!f) return; const reader = new FileReader(); reader.onload = (ev)=> { const img = els.logo.querySelector('img'); if(img) img.src = ev.target.result; calc(); }; reader.readAsDataURL(f); });
+    els.printBtn.addEventListener('click', ()=> window.print());
+    els.saveBtn.addEventListener('click', save);
+    els.loadBtn.addEventListener('click', load);
+    els.resetBtn.addEventListener('click', reset);
+
+    // init
+    const today = new Date(); const iso = today.toISOString().slice(0,10); els.invDate.value = iso; els.supplyDate.value = iso; els.payTermInput.value = 30;
+    renderItemsEditor([{desc:'Management Fee XX-XXXX', qty:1, price:100, vat:21}]);
+    bindEditorEvents();
+    calc();
+  })();
+  </script>
+</body>
+</html>
